@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SV CANALES MUSICALES</title>
+
+<link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+
+<style>
+body{
+  font-family:system-ui;
+  margin:0;
+  padding:16px;
+  display:grid;
+  gap:12px;
+  grid-template-columns:340px 1fr;
+  height:100vh;
+  box-sizing:border-box;
+  background:#fff;
+  color:#c00000;
+}
+
+header{
+  grid-column:1/-1;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+header img.logo{
+  width:40px;
+  height:40px;
+  object-fit:contain;
+  border-radius:6px;
+}
+
+h1{margin:0;font-size:20px;}
+
+.left{
+  overflow:auto;
+  border:1px solid #ccc;
+  padding:8px;
+  border-radius:8px;
+  background:#fff;
+}
+
+.search{margin-bottom:8px;}
+
+ul{list-style:none;padding:0;margin:0;}
+
+li.channel{
+  padding:6px;
+  border-bottom:1px solid #ddd;
+}
+
+li.channel:hover{background:#f5f5f5;}
+li.channel.active{background:#ddd;}
+li.channel.active .channel-title{color:#c00000;}
+
+.title-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.channel-info{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.channel-info img{
+  width:26px;
+  height:26px;
+  object-fit:contain;
+  border-radius:4px;
+  background:#eee;
+}
+
+.group-header{
+  font-weight:600;
+  padding:6px;
+  margin-top:6px;
+  background:#f2f2f2;
+  border-radius:6px;
+  cursor:pointer;
+  display:flex;
+  justify-content:space-between;
+}
+
+.group-header:hover{background:#e5e5e5;}
+
+.group-channels{display:none;}
+.group-channels.open{display:block;}
+
+.right{display:flex;flex-direction:column;gap:12px;}
+
+.video-container{height:80vh;}
+
+.video-js{
+  width:100%;
+  height:100%;
+  border-radius:12px;
+  background:#000!important;
+}
+
+.note{font-size:13px;color:#666;}
+.error{color:#c00000;}
+
+input,button{
+  background:#fff;
+  color:#c00000;
+  border:1px solid #ccc;
+  border-radius:6px;
+  padding:6px;
+}
+
+button.active-btn{
+  background:#c00000!important;
+  color:#fff;
+}
+
+button:hover{background:#eee;}
+
+footer{
+  grid-column:1/-1;
+  font-size:13px;
+  color:#777;
+}
+</style>
+
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+</head>
+
+<body>
+
+<header>
+<img src="https://i.ibb.co/7dGjZb80/6.jpg" class="logo">
+<h1>SV CANALES MUSICALES</h1>
+</header>
+
+<div class="left">
+<input id="filter" placeholder="Buscar canales...">
+<div id="groups"></div>
+</div>
+
+<div class="right">
+
+<div>
+<div id="current-title">→ Selecciona un canal</div>
+<div class="note" id="current-info"></div>
+</div>
+
+<div class="video-container">
+<video id="player" class="video-js vjs-big-play-centered" controls></video>
+</div>
+
+<div>
+<div id="status" class="note">Estado: listo</div>
+<div id="error" class="error" style="display:none"></div>
+</div>
+
+</div>
+
+<footer>SV CANALES MUSICALES</footer>
+
+<script>
+(async function(){
+
+const url='https://raw.githubusercontent.com/supervectar-coder/tvpublicamusical/refs/heads/main/tv%20publica%20musicales.m3u';
+const groups=document.getElementById('groups');
+const player=videojs('player');
+const filter=document.getElementById('filter');
+const title=document.getElementById('current-title');
+const status=document.getElementById('status');
+
+let list=[],btn=null,li=null;
+
+function parse(t){
+ const l=t.split(/\n/);let i=[],m=null;
+ l.forEach(x=>{
+  x=x.trim();
+  if(x.startsWith('#EXTINF'))m=x;
+  else if(x&&!x.startsWith('#')){
+   let g="Otros",logo="",name=x;
+   if(m){
+    let c=m.indexOf(',');
+    if(c>-1)name=m.slice(c+1);
+    let a=m.match(/group-title="([^"]+)"/);if(a)g=a[1];
+    let b=m.match(/tvg-logo="([^"]+)"/);if(b)logo=b[1];
+   }
+   i.push({name,url:x,logo,group:g});
+   m=null;
+  }
+ });
+ return i;
+}
+
+function draw(f=""){
+ groups.innerHTML="";
+ let o={};
+ list.filter(x=>x.name.toLowerCase().includes(f.toLowerCase()))
+ .forEach(x=>(o[x.group]=o[x.group]||[]).push(x));
+
+ Object.keys(o).sort().forEach(g=>{
+  let h=document.createElement('div');
+  h.className="group-header";
+  h.innerHTML=g+" <span>▼</span>";
+  let u=document.createElement('ul');
+  u.className="group-channels";
+
+  o[g].forEach(x=>{
+   let l=document.createElement('li');l.className="channel";
+   let d=document.createElement('div');d.className="title-line";
+   let i=document.createElement('div');i.className="channel-info";
+   if(x.logo){let im=document.createElement('img');im.src=x.logo;i.appendChild(im);}
+   let s=document.createElement('div');s.className="channel-title";s.textContent=x.name;i.appendChild(s);
+   let b=document.createElement('button');b.textContent="▶";
+   b.onclick=()=>{
+    if(btn)btn.classList.remove("active-btn");
+    if(li)li.classList.remove("active");
+    b.classList.add("active-btn");l.classList.add("active");
+    btn=b;li=l;
+    title.textContent=x.name;
+    status.textContent="Reproduciendo...";
+    player.src({src:x.url,type:"application/x-mpegURL"});
+    player.play();
+   };
+   d.append(i,b);l.appendChild(d);u.appendChild(l);
+  });
+
+  h.onclick=()=>u.classList.toggle("open");
+  groups.append(h,u);
+ });
+}
+
+filter.oninput=()=>draw(filter.value);
+
+fetch(url).then(r=>r.text()).then(t=>{
+ list=parse(t);
+ draw();
+ status.textContent="Canales: "+list.length;
+});
+
+})();
+</script>
+
+</body>
+</html>
